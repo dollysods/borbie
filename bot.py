@@ -4,16 +4,19 @@ from random import randint
 import random
 import asyncio
 import discord
-import requests, json
+import requests
 from dotenv import load_dotenv
 from discord.ext import commands
+
 # Bot login stuff
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
+
 # Setting up the bot commands
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!',intents=intents)
+
 # Bot Login message on shell
 @bot.event
 async def on_ready():
@@ -37,21 +40,42 @@ async def veep(ctx):
     response = random.choice(veep_quotes)
     await ctx.send(response)
 # Weather Bot
-@bot.command(name='w', help='current weather, format as !w city')
-async def w(ctx):
-    city = message.content[slice(9, len(message.content))].lower()
-    api_key = '82d500bf503b403892b234739230110'
-    url = f'http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}'
-    response = requests.get(url)
+@bot.command(name='weather', help='current weather, format as !weather city, state')
+async def weather(ctx, *, location):
+    try:
+        # Split input into city and state
+        city, state = map(str.strip, location.split(','))
 
-if response.status_code == 200:
-    data = response.json()
-    temp = data['main']['temp']
-    desc = data['weather'][0]['description']
-    print(f'Temperature: {temp} F')
-    print(f'Description: {desc}')
-else:
-    print('Error fetching weather data')
+        # Format city and state for the API request
+        formatted_location = f'{city},{state}'
+
+        api_key = '82d500bf503b403892b234739230110'
+        url = f'https://api.weatherapi.com/v1/current.json?key={api_key}&q={formatted_location}&aqi=no'
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            data = response.json()
+
+            # Extract city, region, and country information
+            city = data['location']['name']
+            region = data['location'].get('region', '')  # Get region if available, otherwise empty string
+            country = data['location']['country']
+
+            # Extract temperature and weather condition description
+            temp = data['current']['temp_f']
+            desc = data['current']['condition']['text']
+
+            # Send weather information including city, region, and country
+            weather_info = f'Weather in {city}, {region}, {country}:' if region else f'Weather in {city}, {country}:'
+            await ctx.send(weather_info)
+            await ctx.send(f'Temperature: {temp} F')
+            await ctx.send(f'Description: {desc}')
+        else:
+            await ctx.send('Error fetching weather data')
+    except Exception as e:
+        print(e)
+        await ctx.send('An error occurred while fetching weather data.')
+
 # Roll the Dice
 # Determines if a message is owned by the bot
 def is_me(m):
@@ -122,13 +146,6 @@ def roll_hit(num_of_dice, dice_type, hit, modifier, threshold):
         else:
             results += " does not meet the {} threshold. ***Failure***".format(threshold)
     return results
-
-@bot.event
-async def on_ready():
-    print('Logged in as')
-    print(bot.user.name)
-    print(bot.user.id)
-    print('------')
 
 # Parse !roll verbiage
 @bot.command(pass_context=True,description='Rolls dice.\nExamples:\n100  Rolls 1-100.\n50-100  Rolls 50-100.\n3d6  Rolls 3 d6 dice and returns total.\nModifiers:\n! Hit success. 3d6!5 Counts number of rolls that are greater than 5.\nmod: Modifier. 3d6mod3 or 3d6mod-3. Adds 3 to the result.\n> Threshold. 100>30 returns success if roll is greater than or equal to 30.\n\nFormatting:\nMust be done in order.\nSingle die roll: 1-100mod2>30\nMultiple: 5d6!4mod-2>2')
