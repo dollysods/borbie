@@ -4,6 +4,7 @@ from random import randint
 import random
 import asyncio
 import discord
+import requests, json
 from dotenv import load_dotenv
 from discord.ext import commands
 # Bot login stuff
@@ -35,9 +36,22 @@ async def veep(ctx):
     ]
     response = random.choice(veep_quotes)
     await ctx.send(response)
-# Gif retrieval
+# Weather Bot
+@bot.command(name='w', help='current weather, format as !w city')
+async def w(ctx):
+    city = message.content[slice(9, len(message.content))].lower()
+    api_key = '82d500bf503b403892b234739230110'
+    url = f'http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}'
+    response = requests.get(url)
 
-
+if response.status_code == 200:
+    data = response.json()
+    temp = data['main']['temp']
+    desc = data['weather'][0]['description']
+    print(f'Temperature: {temp} F')
+    print(f'Description: {desc}')
+else:
+    print('Error fetching weather data')
 # Roll the Dice
 # Determines if a message is owned by the bot
 def is_me(m):
