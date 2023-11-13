@@ -49,7 +49,7 @@ async def weather(ctx, *, location):
         # Format city and state for the API request
         formatted_location = f'{city},{state}'
 
-        api_key = '82d500bf503b403892b234739230110'
+        api_key = '{api_key}'
         url = f'https://api.weatherapi.com/v1/current.json?key={api_key}&q={formatted_location}&aqi=no'
         response = requests.get(url)
 
